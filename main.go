@@ -59,6 +59,10 @@ func run(ctx context.Context, config Config) error {
 		}
 	}()
 
+	if err := brain.CreateCommands(session); err != nil {
+		return fmt.Errorf("create commands: %w", err)
+	}
+
 	stop := make(chan os.Signal)
 	signal.Notify(stop, os.Interrupt)
 
