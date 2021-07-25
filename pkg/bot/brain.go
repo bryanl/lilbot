@@ -56,6 +56,10 @@ func (brain *Brain) ReceiveMessage(session *discordgo.Session, message *discordg
 		brain.speak(session, message.ChannelID, "Ping!")
 	}
 
+	if message.Content == "secret" {
+		brain.dm(session, message.Author.ID, "A secret message")
+	}
+
 	brain.logger.Info("received message", "message", message)
 }
 
@@ -69,6 +73,16 @@ func (brain *Brain) isSelf(session *discordgo.Session, message *discordgo.Messag
 	}
 
 	return false
+}
+
+func (brain *Brain) dm(session *discordgo.Session, recipientID, message string) {
+	channel, err := session.UserChannelCreate(recipientID)
+	if err != nil {
+		brain.logger.Error(err, "unable to create user channel", "recipientID", recipientID)
+		return
+	}
+
+	brain.speak(session, channel.ID, message)
 }
 
 func (brain *Brain) speak(session *discordgo.Session, channelID, message string) {
