@@ -1,0 +1,104 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "pluginhost/v1alpha1/pluginhost.proto",
+    "version": "version not set"
+  },
+  "tags": [
+    {
+      "name": "LilbotPluginHostService"
+    }
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {},
+  "definitions": {
+    "protobufAny": {
+      "type": "object",
+      "properties": {
+        "typeUrl": {
+          "type": "string"
+        },
+        "value": {
+          "type": "string",
+          "format": "byte"
+        }
+      }
+    },
+    "rpcStatus": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "message": {
+          "type": "string"
+        },
+        "details": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/protobufAny"
+          }
+        }
+      }
+    },
+    "v1alpha1Action": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is the name of the action."
+        },
+        "options": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/v1alpha1ActionOption"
+          },
+          "description": "Options for the command. Required options must be listed first."
+        }
+      },
+      "description": "Action is an action that can be called."
+    },
+    "v1alpha1ActionOption": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name is the name of the option."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description is the description of the option."
+        },
+        "required": {
+          "type": "boolean",
+          "description": "Required sets the required status."
+        },
+        "type": {
+          "$ref": "#/definitions/v1alpha1ActionOptionType",
+          "description": "Type is the type of the option."
+        }
+      },
+      "description": "Option is an action option."
+    },
+    "v1alpha1ActionOptionType": {
+      "type": "string",
+      "enum": [
+        "TYPE_UNSPECIFIED",
+        "TYPE_STRING",
+        "TYPE_INTEGER",
+        "TYPE_BOOLEAN"
+      ],
+      "default": "TYPE_UNSPECIFIED",
+      "description": "Type is are the types of options.\n\n - TYPE_UNSPECIFIED: Default value. If this is selected, the type will default to string.\n - TYPE_STRING: String option.\n - TYPE_INTEGER: Integer option.\n - TYPE_BOOLEAN: Boolean option."
+    },
+    "v1alpha1RegisterResponse": {
+      "type": "object"
+    }
+  }
+}

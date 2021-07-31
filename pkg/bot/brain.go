@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/bryanl/lilbot/internal/log"
+	"github.com/bryanl/lilutil/log"
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-logr/logr"
 )
@@ -316,7 +316,7 @@ type Brain struct {
 
 // NewBrain creates a new instance of Brain.
 func NewBrain(ctx context.Context) *Brain {
-	logger := log.From(ctx)
+	logger := log.From(ctx).WithName("brain")
 
 	bot := &Brain{
 		logger: logger,
@@ -338,9 +338,12 @@ func (brain *Brain) AddHandlers(session *discordgo.Session) error {
 	return nil
 }
 
+// CreateCommands creates the bot commands.
 func (brain *Brain) CreateCommands(session *discordgo.Session) error {
 	for _, command := range commands {
 		brain.logger.Info("creating command", "name", command.Name)
+
+		// session.ApplicationCommandDelete()
 
 		_, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
 		if err != nil {
@@ -377,6 +380,7 @@ func (brain *Brain) ReceiveMessage(session *discordgo.Session, message *discordg
 	brain.logger.Info("received message", "message", message)
 }
 
+// InteractionCreate creates an interaction.
 func (brain *Brain) InteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 		h(s, i)

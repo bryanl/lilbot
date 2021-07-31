@@ -1,0 +1,58 @@
+syntax = "proto3";
+
+option go_package = "github.com/bryanl/lilbot/gen/go/plugin/v1alpha1";
+
+package pluginhost.v1alpha1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+service LilbotPluginHostService {
+    // Register a plugin with the host.
+    rpc Register (RegisterRequest) returns (RegisterResponse) {
+    }
+}
+
+// Action is an action that can be called.
+message Action {
+    // Name is the name of the action.
+    string name = 1;
+    // Options for the command. Required options must be listed first.
+    repeated ActionOption options = 2;
+}
+
+// Option is an action option.
+message ActionOption {
+    // Type is are the types of options.
+    enum Type {
+        // Default value. If this is selected, the type will default to string.
+        TYPE_UNSPECIFIED = 0;
+
+        // String option.
+        TYPE_STRING = 1;
+        // Integer option.
+        TYPE_INTEGER = 2;
+        // Boolean option.
+        TYPE_BOOLEAN = 3;
+    }
+
+    // Name is the name of the option.
+    string name = 1;
+    // Description is the description of the option.
+    string description = 2;
+    // Required sets the required status.
+    bool required = 3;
+    // Type is the type of the option.
+    Type type = 4; // enum
+}
+
+// Register a plugin.
+message RegisterRequest {
+    // Name is the name of the plugin.
+    string name = 1;
+    // Actions are actions the plugin contains.
+    map<string, Action> actions = 2;
+}
+
+message RegisterResponse {
+}

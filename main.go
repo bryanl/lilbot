@@ -5,17 +5,23 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/signal"
 
-	"github.com/bryanl/lilbot/internal/log"
-	"github.com/bryanl/lilbot/pkg/bot"
+	"github.com/bryanl/lilutil/goutil"
+	"github.com/bryanl/lilutil/log"
 	"github.com/bwmarrin/discordgo"
+
+	"github.com/bryanl/lilbot/pkg/bot"
 )
 
 func main() {
 	config := Config{}
 
 	flag.StringVar(&config.Token, "token", envString("LILBOT_TOKEN", ""), "bot token")
+	flag.StringVar(
+		&config.PluginHostAddr,
+		"plugin-host-addr",
+		envString("LILBOT_PLUGIN_HOST_ADDR", ":50051"),
+		"plugin host address")
 	flag.Parse()
 
 	ctx := log.WithLogger(context.Background())
@@ -32,12 +38,17 @@ func main() {
 type Config struct {
 	// Token is the bot token
 	Token string
+	// PluginHostAddr is the address the plugin host server should listen on.
+	PluginHostAddr string
 }
 
 func run(ctx context.Context, config Config) error {
-	logger := log.From(ctx)
+	logger := log.From(ctx).WithName("main")
 
-	brain := bot.NewBrain(ctx)
+	runCtx, runCancel := context.WithCancel(ctx)
+	defer runCancel()
+
+	brain := bot.NewBrain(runCtx)
 
 	logger.Info("creating session")
 	session, err := discordgo.New("Bot " + config.Token)
@@ -63,12 +74,19 @@ func run(ctx context.Context, config Config) error {
 		return fmt.Errorf("create commands: %w", err)
 	}
 
-	stop := make(chan os.Signal)
-	signal.Notify(stop, os.Interrupt)
+	pluginHost := bot.NewPluginHost()
 
-	logger.Info("bot is ready to process handlers")
-	<-stop
-	logger.Info("stopping")
+	grpcServer, err := bot.NewGRPCServer(config.PluginHostAddr, pluginHost)
+	if err != nil {
+		return fmt.Errorf("create GRPC server: %w", err)
+	}
+
+	grpcServerDone, err := grpcServer.Start(runCtx)
+	if err != nil {
+		return fmt.Errorf("start GRPC server: %w", err)
+	}
+
+	goutil.HandleGracefulClose(ctx, runCancel, grpcServerDone)
 
 	return nil
 }
