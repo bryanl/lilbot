@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+option go_package = "github.com/bryanl/lilbot/gen/go/plugin/v1alpha1";
+
+package plugin.v1alpha1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+// Plugin service.
+service LilbotPluginService {
+    // Invoke a command.
+    rpc Invoke (InvokeRequest) returns (InvokeResponse) {
+    }
+}
+
+// Invoke request.
+message InvokeRequest {
+    // Command to invoke.
+    string command_name = 1;
+}
+
+// Invoke response.
+message InvokeResponse {
+
+}
+

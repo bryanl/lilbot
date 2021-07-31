@@ -8,7 +8,6 @@ import (
 
 	"github.com/bryanl/lilutil/goutil"
 	"github.com/bryanl/lilutil/log"
-	"github.com/bwmarrin/discordgo"
 
 	"github.com/bryanl/lilbot/pkg/bot"
 )
@@ -43,38 +42,20 @@ type Config struct {
 }
 
 func run(ctx context.Context, config Config) error {
-	logger := log.From(ctx).WithName("main")
-
 	runCtx, runCancel := context.WithCancel(ctx)
 	defer runCancel()
 
-	brain := bot.NewBrain(runCtx)
-
-	logger.Info("creating session")
-	session, err := discordgo.New("Bot " + config.Token)
+	brain, err := bot.New(ctx, config.Token)
 	if err != nil {
-		return fmt.Errorf("create discord session: %w", err)
+		return fmt.Errorf("create bot: %w", err)
 	}
 
-	if err := brain.AddHandlers(session); err != nil {
-		return fmt.Errorf("add handlers for session: %w", err)
+	brainDone, err := brain.Start(runCtx)
+	if err != nil {
+		return fmt.Errorf("start bot: %w", err)
 	}
 
-	if err := session.Open(); err != nil {
-		return fmt.Errorf("open session: %w", err)
-	}
-
-	defer func() {
-		if cErr := session.Close(); cErr != nil {
-			logger.Error(err, "close session")
-		}
-	}()
-
-	if err := brain.CreateCommands(session); err != nil {
-		return fmt.Errorf("create commands: %w", err)
-	}
-
-	pluginHost := bot.NewPluginHost()
+	pluginHost := bot.NewPluginHost(brain)
 
 	grpcServer, err := bot.NewGRPCServer(config.PluginHostAddr, pluginHost)
 	if err != nil {
@@ -86,7 +67,7 @@ func run(ctx context.Context, config Config) error {
 		return fmt.Errorf("start GRPC server: %w", err)
 	}
 
-	goutil.HandleGracefulClose(ctx, runCancel, grpcServerDone)
+	goutil.HandleGracefulClose(ctx, runCancel, brainDone, grpcServerDone)
 
 	return nil
 }

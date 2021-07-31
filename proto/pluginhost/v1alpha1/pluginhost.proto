@@ -1,12 +1,13 @@
 syntax = "proto3";
 
-option go_package = "github.com/bryanl/lilbot/gen/go/plugin/v1alpha1";
+option go_package = "github.com/bryanl/lilbot/gen/go/pluginhost/v1alpha1";
 
 package pluginhost.v1alpha1;
 
 import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
+// Plugin host service.
 service LilbotPluginHostService {
     // Register a plugin with the host.
     rpc Register (RegisterRequest) returns (RegisterResponse) {
@@ -17,8 +18,10 @@ service LilbotPluginHostService {
 message Action {
     // Name is the name of the action.
     string name = 1;
+    // Description is the description of the action.
+    string description = 2;
     // Options for the command. Required options must be listed first.
-    repeated ActionOption options = 2;
+    repeated ActionOption options = 3;
 }
 
 // Option is an action option.

@@ -54,6 +54,10 @@
           "type": "string",
           "description": "Name is the name of the action."
         },
+        "description": {
+          "type": "string",
+          "description": "Description is the description of the action."
+        },
         "options": {
           "type": "array",
           "items": {

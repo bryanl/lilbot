@@ -4,390 +4,131 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/bryanl/lilutil/log"
 	"github.com/bwmarrin/discordgo"
 	"github.com/go-logr/logr"
 )
 
-var (
-	commands = []*discordgo.ApplicationCommand{
-		{
-			Name: "basic-command",
-			// All commands and options must have a description
-			// Commands/options without description will fail the registration
-			// of the command.
-			Description: "Basic command",
-		},
-		{
-			Name:        "options",
-			Description: "Command for demonstrating options",
-			Options: []*discordgo.ApplicationCommandOption{
-
-				{
-					Type:        discordgo.ApplicationCommandOptionString,
-					Name:        "string-option",
-					Description: "String option",
-					Required:    true,
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionInteger,
-					Name:        "integer-option",
-					Description: "Integer option",
-					Required:    true,
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionBoolean,
-					Name:        "bool-option",
-					Description: "Boolean option",
-					Required:    true,
-				},
-
-				// Required options must be listed first since optional parameters
-				// always come after when they're used.
-				// The same concept applies to Discord's Slash-commands API
-
-				{
-					Type:        discordgo.ApplicationCommandOptionChannel,
-					Name:        "channel-option",
-					Description: "Channel option",
-					Required:    false,
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionUser,
-					Name:        "user-option",
-					Description: "User option",
-					Required:    false,
-				},
-				{
-					Type:        discordgo.ApplicationCommandOptionRole,
-					Name:        "role-option",
-					Description: "Role option",
-					Required:    false,
-				},
-			},
-		},
-		{
-			Name:        "subcommands",
-			Description: "Subcommands and command groups example",
-			Options: []*discordgo.ApplicationCommandOption{
-				// When a command has subcommands/subcommand groups
-				// It must not have top-level options, they aren't accesible in the UI
-				// in this case (at least not yet), so if a command has
-				// subcommands/subcommand any groups registering top-level options
-				// will cause the registration of the command to fail
-
-				{
-					Name:        "scmd-grp",
-					Description: "Subcommands group",
-					Options: []*discordgo.ApplicationCommandOption{
-						// Also, subcommand groups aren't capable of
-						// containing options, by the name of them, you can see
-						// they can only contain subcommands
-						{
-							Name:        "nst-subcmd",
-							Description: "Nested subcommand",
-							Type:        discordgo.ApplicationCommandOptionSubCommand,
-						},
-					},
-					Type: discordgo.ApplicationCommandOptionSubCommandGroup,
-				},
-				// Also, you can create both subcommand groups and subcommands
-				// in the command at the same time. But, there's some limits to
-				// nesting, count of subcommands (top level and nested) and options.
-				// Read the intro of slash-commands docs on Discord dev portal
-				// to get more information
-				{
-					Name:        "subcmd",
-					Description: "Top-level subcommand",
-					Type:        discordgo.ApplicationCommandOptionSubCommand,
-				},
-			},
-		},
-		{
-			Name:        "responses",
-			Description: "Interaction responses testing initiative",
-			Options: []*discordgo.ApplicationCommandOption{
-				{
-					Name:        "resp-type",
-					Description: "Response type",
-					Type:        discordgo.ApplicationCommandOptionInteger,
-					Choices: []*discordgo.ApplicationCommandOptionChoice{
-						{
-							Name:  "Channel message with source",
-							Value: 4,
-						},
-						{
-							Name:  "Deferred response With Source",
-							Value: 5,
-						},
-					},
-					Required: true,
-				},
-			},
-		},
-		{
-			Name:        "followups",
-			Description: "Followup messages",
-		},
-	}
-	commandHandlers = map[string]func(s *discordgo.Session, i *discordgo.InteractionCreate){
-		"basic-command": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: "Hey there! Congratulations, you just executed your first slash command",
-				},
-			})
-		},
-		"options": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			margs := []interface{}{
-				// Here we need to convert raw interface{} value to wanted type.
-				// Also, as you can see, here is used utility functions to convert the value
-				// to particular type. Yeah, you can use just switch type,
-				// but this is much simpler
-				i.ApplicationCommandData().Options[0].StringValue(),
-				i.ApplicationCommandData().Options[1].IntValue(),
-				i.ApplicationCommandData().Options[2].BoolValue(),
-			}
-			msgformat :=
-				` Now you just learned how to use command options. Take a look to the value of which you've just entered:
-				> string_option: %s
-				> integer_option: %d
-				> bool_option: %v
-`
-			if len(i.ApplicationCommandData().Options) >= 4 {
-				margs = append(margs, i.ApplicationCommandData().Options[3].ChannelValue(nil).ID)
-				msgformat += "> channel-option: <#%s>\n"
-			}
-			if len(i.ApplicationCommandData().Options) >= 5 {
-				margs = append(margs, i.ApplicationCommandData().Options[4].UserValue(nil).ID)
-				msgformat += "> user-option: <@%s>\n"
-			}
-			if len(i.ApplicationCommandData().Options) >= 6 {
-				margs = append(margs, i.ApplicationCommandData().Options[5].RoleValue(nil, "").ID)
-				msgformat += "> role-option: <@&%s>\n"
-			}
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				// Ignore type for now, we'll discuss them in "responses" part
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: fmt.Sprintf(
-						msgformat,
-						margs...,
-					),
-				},
-			})
-		},
-		"subcommands": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			content := ""
-
-			// As you can see, the name of subcommand (nested, top-level) or subcommand group
-			// is provided through arguments.
-			switch i.ApplicationCommandData().Options[0].Name {
-			case "subcmd":
-				content =
-					"The top-level subcommand is executed. Now try to execute the nested one."
-			default:
-				if i.ApplicationCommandData().Options[0].Name != "scmd-grp" {
-					return
-				}
-				switch i.ApplicationCommandData().Options[0].Options[0].Name {
-				case "nst-subcmd":
-					content = "Nice, now you know how to execute nested commands too"
-				default:
-					// I added this in the case something might go wrong
-					content = "Oops, something gone wrong.\n" +
-						"Hol' up, you aren't supposed to see this message."
-				}
-			}
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					Content: content,
-				},
-			})
-		},
-		"responses": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			// Responses to a command are very important.
-			// First of all, because you need to react to the interaction
-			// by sending the response in 3 seconds after receiving, otherwise
-			// interaction will be considered invalid and you can no longer
-			// use the interaction token and ID for responding to the user's request
-
-			content := ""
-			// As you can see, the response type names used here are pretty self-explanatory,
-			// but for those who want more information see the official documentation
-			switch i.ApplicationCommandData().Options[0].IntValue() {
-			case int64(discordgo.InteractionResponseChannelMessageWithSource):
-				content =
-					"You just responded to an interaction, sent a message and showed the original one. " +
-						"Congratulations!"
-				content +=
-					"\nAlso... you can edit your response, wait 5 seconds and this message will be changed"
-			default:
-				err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-					Type: discordgo.InteractionResponseType(i.ApplicationCommandData().Options[0].IntValue()),
-				})
-				if err != nil {
-					s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
-						Content: "Something went wrong",
-					})
-				}
-				return
-			}
-
-			err := s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseType(i.ApplicationCommandData().Options[0].IntValue()),
-				Data: &discordgo.InteractionResponseData{
-					Content: content,
-				},
-			})
-			if err != nil {
-				s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
-					Content: "Something went wrong",
-				})
-				return
-			}
-			time.AfterFunc(time.Second*5, func() {
-				err = s.InteractionResponseEdit(s.State.User.ID, i.Interaction, &discordgo.WebhookEdit{
-					Content: content + "\n\nWell, now you know how to create and edit responses. " +
-						"But you still don't know how to delete them... so... wait 10 seconds and this " +
-						"message will be deleted.",
-				})
-				if err != nil {
-					s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
-						Content: "Something went wrong",
-					})
-					return
-				}
-				time.Sleep(time.Second * 10)
-				s.InteractionResponseDelete(s.State.User.ID, i.Interaction)
-			})
-		},
-		"followups": func(s *discordgo.Session, i *discordgo.InteractionCreate) {
-			// Followup messages are basically regular messages (you can create as many of them as you wish)
-			// but work as they are created by webhooks and their functionality
-			// is for handling additional messages after sending a response.
-
-			s.InteractionRespond(i.Interaction, &discordgo.InteractionResponse{
-				Type: discordgo.InteractionResponseChannelMessageWithSource,
-				Data: &discordgo.InteractionResponseData{
-					// Note: this isn't documented, but you can use that if you want to.
-					// This flag just allows you to create messages visible only for the caller of the command
-					// (user who triggered the command)
-					Flags:   1 << 6,
-					Content: "Surprise!",
-				},
-			})
-			msg, err := s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
-				Content: "Followup message has been created, after 5 seconds it will be edited",
-			})
-			if err != nil {
-				s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
-					Content: "Something went wrong",
-				})
-				return
-			}
-			time.Sleep(time.Second * 5)
-
-			s.FollowupMessageEdit(s.State.User.ID, i.Interaction, msg.ID, &discordgo.WebhookEdit{
-				Content: "Now the original message is gone and after 10 seconds this message will ~~self-destruct~~ be deleted.",
-			})
-
-			time.Sleep(time.Second * 10)
-
-			s.FollowupMessageDelete(s.State.User.ID, i.Interaction, msg.ID)
-
-			s.FollowupMessageCreate(s.State.User.ID, i.Interaction, true, &discordgo.WebhookParams{
-				Content: "For those, who didn't skip anything and followed tutorial along fairly, " +
-					"take a unicorn :unicorn: as reward!\n" +
-					"Also, as bonus... look at the original interaction response :D",
-			})
-		},
-	}
-)
-
-// Brain is the bot control center.
-type Brain struct {
-	logger logr.Logger
+// Brain is a bot interface.
+type Brain interface {
+	// CreateCommand creates a command.
+	CreateCommand(ctx context.Context, command *discordgo.ApplicationCommand) error
 }
 
-// NewBrain creates a new instance of Brain.
-func NewBrain(ctx context.Context) *Brain {
-	logger := log.From(ctx).WithName("brain")
-
-	bot := &Brain{
-		logger: logger,
-	}
-
-	return bot
+// DiscordBot is a live implementation of Brain.
+type DiscordBot struct {
+	session *discordgo.Session
+	logger  logr.Logger
 }
 
-// AddHandlers adds handlers for a session.
-func (brain *Brain) AddHandlers(session *discordgo.Session) error {
-	if session == nil {
-		return errors.New("session is nil")
+var _ Brain = &DiscordBot{}
+
+// New creates an instance of DiscordBot.
+func New(ctx context.Context, token string) (*DiscordBot, error) {
+	logger := log.From(ctx).WithName("lilbot.DiscordBot")
+
+	logger.Info("creating session")
+	session, err := discordgo.New("Bot " + token)
+	if err != nil {
+		return nil, fmt.Errorf("create discord session: %w", err)
 	}
 
-	session.AddHandler(brain.Ready)
-	session.AddHandler(brain.ReceiveMessage)
-	session.AddHandler(brain.InteractionCreate)
+	bot := &DiscordBot{
+		session: session,
+		logger:  logger,
+	}
 
-	return nil
+	return bot, nil
 }
 
-// CreateCommands creates the bot commands.
-func (brain *Brain) CreateCommands(session *discordgo.Session) error {
-	for _, command := range commands {
-		brain.logger.Info("creating command", "name", command.Name)
+// Start starts the bot.
+func (bot *DiscordBot) Start(ctx context.Context) (<-chan struct{}, error) {
+	bot.logger.Info("starting bot")
 
-		// session.ApplicationCommandDelete()
+	if err := bot.addHandlers(bot.session); err != nil {
+		return nil, fmt.Errorf("add handlers for session :%w", err)
+	}
 
-		_, err := session.ApplicationCommandCreate(session.State.User.ID, "", command)
-		if err != nil {
-			return fmt.Errorf("create '%s' command: %w", command.Name, err)
+	if err := bot.session.Open(); err != nil {
+		return nil, fmt.Errorf("open session: %w", err)
+	}
+
+	ch := make(chan struct{}, 1)
+
+	go func() {
+		<-ctx.Done()
+		bot.logger.Info("closing discord session")
+
+		if cErr := bot.session.Close(); cErr != nil {
+			bot.logger.Error(cErr, "close discord session")
 		}
-	}
+
+		bot.logger.Info("session has closed")
+		close(ch)
+	}()
+
+	return ch, nil
+}
+
+// CreateCommand creates a bot command.
+func (bot *DiscordBot) CreateCommand(ctx context.Context, command *discordgo.ApplicationCommand) error {
+
+	// TODO: store the output somewhere
+	// _, err := session.ApplicationCommandCreate(session.State.User.ID, "", applicationCommand)
+	// if err != nil {
+	// 	return fmt.Errorf("create command '%s': %w", name, err)
+	// }
 
 	return nil
 }
 
 // Ready is a discord ready handler.
-func (brain *Brain) Ready(_ *discordgo.Session, ready *discordgo.Ready) {
-	brain.logger.Info("bot is up", "ready", ready)
+func (bot *DiscordBot) Ready(_ *discordgo.Session, ready *discordgo.Ready) {
+	bot.logger.Info("bot is up", "ready", ready)
 }
 
 // ReceiveMessage is a discord receive message handler.
-func (brain *Brain) ReceiveMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
-	if brain.isSelf(session, message) {
+func (bot *DiscordBot) ReceiveMessage(session *discordgo.Session, message *discordgo.MessageCreate) {
+	if bot.isSelf(session, message) {
 		return
 	}
 
 	if message.Content == "ping" {
-		brain.speak(session, message.ChannelID, "Pong!")
+		bot.speak(session, message.ChannelID, "Pong!")
 	}
 
 	if message.Content == "pong" {
-		brain.speak(session, message.ChannelID, "Ping!")
+		bot.speak(session, message.ChannelID, "Ping!")
 	}
 
 	if message.Content == "secret" {
-		brain.dm(session, message.Author.ID, "A secret message")
+		bot.dm(session, message.Author.ID, "A secret message")
 	}
 
-	brain.logger.Info("received message", "message", message)
+	bot.logger.Info("received message", "message", message)
 }
 
 // InteractionCreate creates an interaction.
-func (brain *Brain) InteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
+func (bot *DiscordBot) InteractionCreate(s *discordgo.Session, i *discordgo.InteractionCreate) {
 	if h, ok := commandHandlers[i.ApplicationCommandData().Name]; ok {
 		h(s, i)
 	}
 }
 
-func (brain *Brain) isSelf(session *discordgo.Session, message *discordgo.MessageCreate) bool {
+func (bot *DiscordBot) addHandlers(session *discordgo.Session) error {
+	if session == nil {
+		return errors.New("session is nil")
+	}
+
+	session.AddHandler(bot.Ready)
+	session.AddHandler(bot.ReceiveMessage)
+	session.AddHandler(bot.InteractionCreate)
+
+	return nil
+}
+
+func (bot *DiscordBot) isSelf(session *discordgo.Session, message *discordgo.MessageCreate) bool {
 	if session == nil || message == nil {
 		return false
 	}
@@ -399,19 +140,19 @@ func (brain *Brain) isSelf(session *discordgo.Session, message *discordgo.Messag
 	return false
 }
 
-func (brain *Brain) dm(session *discordgo.Session, recipientID, message string) {
+func (bot *DiscordBot) dm(session *discordgo.Session, recipientID, message string) {
 	channel, err := session.UserChannelCreate(recipientID)
 	if err != nil {
-		brain.logger.Error(err, "unable to create user channel", "recipientID", recipientID)
+		bot.logger.Error(err, "unable to create user channel", "recipientID", recipientID)
 		return
 	}
 
-	brain.speak(session, channel.ID, message)
+	bot.speak(session, channel.ID, message)
 }
 
-func (brain *Brain) speak(session *discordgo.Session, channelID, message string) {
+func (bot *DiscordBot) speak(session *discordgo.Session, channelID, message string) {
 	_, err := session.ChannelMessageSend(channelID, message)
 	if err != nil {
-		brain.logger.Error(err, "send message")
+		bot.logger.Error(err, "send message")
 	}
 }

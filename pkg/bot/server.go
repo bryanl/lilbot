@@ -2,7 +2,7 @@ package bot
 
 import (
 	"context"
-	"errors"
+	"fmt"
 
 	pluginostv1alpha1 "github.com/bryanl/lilbot/gen/go/pluginhost/v1alpha1"
 )
@@ -24,9 +24,9 @@ func NewServer(pluginHost PluginHost) *Server {
 }
 
 // Register registers a plugin with the plugin host.
-func (s Server) Register(ctx context.Context, request *pluginostv1alpha1.RegisterRequest) (*pluginostv1alpha1.RegisterResponse, error) {
-	if request == nil {
-		return nil, errors.New("request is nil")
+func (s *Server) Register(ctx context.Context, request *pluginostv1alpha1.RegisterRequest) (*pluginostv1alpha1.RegisterResponse, error) {
+	if err := s.pluginHost.Register(ctx, request); err != nil {
+		return nil, fmt.Errorf("register command: %w", err)
 	}
 
 	resp := &pluginostv1alpha1.RegisterResponse{}

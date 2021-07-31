@@ -36,8 +36,6 @@ github.com/BurntSushi/xgb v0.0.0-20160522181843-27f122750802/go.mod h1:IVnqGOEym
 github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kdvxnR2qWY=
 github.com/bombsimon/logrusr v1.1.0 h1:Y03FI4Z/Shyrc9jF26vuaUbnPxC5NMJnTtJA/3Lihq8=
 github.com/bombsimon/logrusr v1.1.0/go.mod h1:Jq0nHtvxabKE5EMwAAdgTaz7dfWE8C4i11NOltxGQpc=
-github.com/bryanl/lilutil v0.3.0 h1:TSkWek/wqA55p0VyhoNaSVTRnkPbCRM9lGbLyIa5AQA=
-github.com/bryanl/lilutil v0.3.0/go.mod h1:4p8lXGqWzVsBwjBqlOjIMANjLtqTjt/a8glMja/FFnU=
 github.com/bryanl/lilutil v0.4.0 h1:qq9HtykKyCdH0cxlDSGK7d44JV3pqtYGzcSMVVoG/P4=
 github.com/bryanl/lilutil v0.4.0/go.mod h1:4p8lXGqWzVsBwjBqlOjIMANjLtqTjt/a8glMja/FFnU=
 github.com/bwmarrin/discordgo v0.23.3-0.20210627161652-421e14965030 h1:JgAlPJlCqsrUqXcClndnvF6LOjV528hpU/l5YzN++PA=
