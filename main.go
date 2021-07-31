@@ -57,12 +57,7 @@ func run(ctx context.Context, config Config) error {
 
 	pluginHost := bot.NewPluginHost(brain)
 
-	grpcServer, err := bot.NewGRPCServer(config.PluginHostAddr, pluginHost)
-	if err != nil {
-		return fmt.Errorf("create GRPC server: %w", err)
-	}
-
-	grpcServerDone, err := grpcServer.Start(runCtx)
+	grpcServerDone, err := startGrpcServer(ctx, config, pluginHost)
 	if err != nil {
 		return fmt.Errorf("start GRPC server: %w", err)
 	}
@@ -70,6 +65,15 @@ func run(ctx context.Context, config Config) error {
 	goutil.HandleGracefulClose(ctx, runCancel, brainDone, grpcServerDone)
 
 	return nil
+}
+
+func startGrpcServer(ctx context.Context, config Config, pluginHost bot.PluginHost) (<-chan struct{}, error) {
+	grpcServer, err := bot.NewGRPCServer(config.PluginHostAddr, pluginHost)
+	if err != nil {
+		return nil, fmt.Errorf("create GRPC server: %w", err)
+	}
+
+	return grpcServer.Start(ctx)
 }
 
 func envString(key string, defaultVal string) string {

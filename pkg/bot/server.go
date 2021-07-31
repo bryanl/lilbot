@@ -25,7 +25,13 @@ func NewServer(pluginHost PluginHost) *Server {
 
 // Register registers a plugin with the plugin host.
 func (s *Server) Register(ctx context.Context, request *pluginostv1alpha1.RegisterRequest) (*pluginostv1alpha1.RegisterResponse, error) {
-	if err := s.pluginHost.Register(ctx, request); err != nil {
+
+	rr, err := CommandFromProto(request)
+	if err != nil {
+		return nil, fmt.Errorf("convert register request from proto")
+	}
+
+	if err := s.pluginHost.Register(ctx, rr); err != nil {
 		return nil, fmt.Errorf("register command: %w", err)
 	}
 

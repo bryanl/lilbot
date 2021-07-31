@@ -73,6 +73,7 @@ func (bot *DiscordBot) Start(ctx context.Context) (<-chan struct{}, error) {
 
 // CreateCommand creates a bot command.
 func (bot *DiscordBot) CreateCommand(ctx context.Context, command *discordgo.ApplicationCommand) error {
+	bot.logger.Info("Create command", "command", command)
 
 	// TODO: store the output somewhere
 	// _, err := session.ApplicationCommandCreate(session.State.User.ID, "", applicationCommand)
